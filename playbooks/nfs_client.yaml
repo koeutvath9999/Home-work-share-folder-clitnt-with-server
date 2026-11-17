@@ -1,0 +1,40 @@
+
+---
+- name: NFS Client Playbook
+  hosts: nfs-client
+  become: true
+  
+  vars:
+    nfs_server:
+      ip: 192.168.33.10
+      mount_path: /srv/nfs_shared
+    nfs_client:
+      mount_path: /mnt/nfs_shared
+  tasks:
+    - name: Update APT
+      apt:
+        update_cache: true
+    - name: Install Common Packages
+      apt:
+        name:
+          - fish
+          - tree
+          - neofetch
+        state: present
+    - name: Install NFS Client
+      apt:
+        name: nfs-common
+        state: present
+    - name: Create the mounting directory
+      file:
+        path: "{{ nfs_client.mount_path }}"
+        state: directory
+        owner: nobody
+        mode: "0777"
+    - name: Mount the NFS server
+      mount:
+        src: "{{ nfs_server.ip }}:{{ nfs_server.mount_path }}"
+        path: "{{ nfs_client.mount_path }}"
+        fstype: nfs
+        opts: defaults,_netdev
+        state: mounted

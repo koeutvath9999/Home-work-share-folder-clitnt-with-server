@@ -1,0 +1,49 @@
+
+---
+- name: NFS Server Playbook
+  hosts: nfs-server
+  become: true
+  vars:
+    nfs_server:
+      mount_path: /srv/nfs_shared
+    nfs_client:
+      ips:
+        - 192.168.33.11
+        - 192.168.33.12
+  tasks:
+    - name: Update APT cache
+      apt:
+        update_cache: true
+    - name: Install Common Packages
+      apt:
+        name:
+          - fish
+          - tree
+          - neofetch
+        state: present
+    - name: Install NFS Server
+      apt:
+        name: nfs-kernel-server
+        state: present
+    - name: Create NFS Server Directory
+      file:
+        path: "{{ nfs_server.mount_path }}"
+        state: directory
+        owner: nobody
+        group: nogroup
+        mode: "0777"
+    - name: Configure NFS Export Files
+      lineinfile:
+        path: /etc/exports
+        line: "{{ nfs_server.mount_path }} {{ item }}(rw,sync,no_subtree_check,root_squash)"
+        create: true
+        state: present
+      loop: "{{ nfs_client.ips }}"
+    - name: Apply NFS Configuration
+      command: exportfs -ra
+      changed_when: false
+    - name: Restart and Enable NFS Server
+      systemd:
+        name: nfs-kernel-server
+        state: restarted
+        enabled: true
